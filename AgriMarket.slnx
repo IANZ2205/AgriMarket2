@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="AgriMarket.Server/AgriMarket.Server.vbproj" />
+  <Project Path="AgriMarket/AgriMarket.vbproj" />
+</Solution>

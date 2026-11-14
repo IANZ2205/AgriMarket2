@@ -1,0 +1,16 @@
+﻿bin/
+obj/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.db
+*.db-shm
+*.db-wal
+Files/products/
+Files/profiles/
+Files/chat/
+*.log
+Thumbs.db
+.DS_Store
