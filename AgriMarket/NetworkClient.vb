@@ -9,16 +9,29 @@ Public Class NetworkClient
     Private Shared ReadOnly ServerIP As String = "127.0.0.1"
     Private Shared ReadOnly ServerPort As Integer = 5000
     Private Shared _reqIdCounter As Integer = 0
-    Private Shared ReadOnly _pendingRequests As New ConcurrentDictionary(Of Integer, TaskCompletionSource(Of String))
+    Private Shared ReadOnly _pendingRequests As New ConcurrentDictionary(Of Integer, TaskCompletionSource(Of String))()
+    Private Shared _suppressConnectionLost As Boolean = False
 
-    ' Events for pushes
     Public Shared Event NotificationReceived(message As String)
     Public Shared Event ChatMessageReceived(convId As Integer, senderName As String, message As String)
+    Public Shared Event ForceLogoutReceived(reason As String)
+    Public Shared Event ConnectionLost()
 
     Public Shared Function Connect() As Boolean
         Try
+            ' Clean up any old socket — suppress ConnectionLost for the replaced one
+            If Client IsNot Nothing Then
+                _suppressConnectionLost = True
+                Try
+                    Client.Close()
+                Catch
+                End Try
+                Thread.Sleep(50) ' let the old listener exit
+            End If
+
             Client = New TcpClient()
             Client.Connect(ServerIP, ServerPort)
+            _suppressConnectionLost = False
 
             Dim receiveThread As New Thread(AddressOf ListenForServer)
             receiveThread.IsBackground = True
@@ -26,6 +39,7 @@ Public Class NetworkClient
 
             Return True
         Catch ex As Exception
+            _suppressConnectionLost = False
             MessageBox.Show("Could not connect to server. Make sure the Server app is running." & Environment.NewLine & ex.Message, "Connection Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
             Return False
         End Try
@@ -42,9 +56,14 @@ Public Class NetworkClient
 
         Dim fullMessage As String = $"{command.Split("|"c)(0)}|{reqId}|{command.Substring(command.IndexOf("|"c) + 1)}"
 
-        Dim stream As NetworkStream = Client.GetStream()
-        Dim data As Byte() = Encoding.UTF8.GetBytes(fullMessage & ControlChars.CrLf)
-        Await stream.WriteAsync(data, 0, data.Length)
+        Try
+            Dim stream As NetworkStream = Client.GetStream()
+            Dim data As Byte() = Encoding.UTF8.GetBytes(fullMessage & ControlChars.CrLf)
+            Await stream.WriteAsync(data, 0, data.Length)
+        Catch ex As Exception
+            _pendingRequests.TryRemove(reqId, Nothing)
+            Return "ERR|0|NOT_CONNECTED|Failed to send: " & ex.Message
+        End Try
 
         Dim timeoutTask = Task.Delay(30000)
         Dim completedTask = Await Task.WhenAny(tcs.Task, timeoutTask)
@@ -58,12 +77,12 @@ Public Class NetworkClient
     End Function
 
     Private Shared Sub ListenForServer()
-        Dim stream As NetworkStream = Client.GetStream()
-        Dim buffer(1024) As Byte
-        Dim sb As New StringBuilder()
-
         Try
-            While Client.Connected
+            Dim stream As NetworkStream = Client.GetStream()
+            Dim buffer(1024) As Byte
+            Dim sb As New StringBuilder()
+
+            While Client IsNot Nothing AndAlso Client.Connected
                 Dim bytesRead As Integer = stream.Read(buffer, 0, buffer.Length)
                 If bytesRead = 0 Then Exit While
 
@@ -82,17 +101,15 @@ Public Class NetworkClient
                                 If reqId = 0 Then
                                     ' This is a PUSH from the server
                                     If parts(0) = "PUSH_NOTIF" Then
-                                        Dim nMsg As String = parts(3)
-                                        RaiseEvent NotificationReceived(nMsg)
+                                        RaiseEvent NotificationReceived(parts(3))
                                     ElseIf parts(0) = "PUSH_CHAT" Then
-                                        ' Format: PUSH_CHAT|0|ConvID|SenderName|Body
-                                        Dim cId As Integer = Convert.ToInt32(parts(2))
-                                        Dim sName As String = parts(3)
-                                        Dim body As String = parts(4)
-                                        RaiseEvent ChatMessageReceived(cId, sName, body)
+                                        RaiseEvent ChatMessageReceived(Convert.ToInt32(parts(2)), parts(3), parts(4))
+                                    ElseIf parts(0) = "PUSH_FORCE_LOGOUT" Then
+                                        Dim reason As String = If(parts.Length > 2, parts(2), "Disconnected by administrator.")
+                                        RaiseEvent ForceLogoutReceived(reason)
                                     End If
                                 Else
-                                    ' It's a normal response
+                                    ' It's a response to a request
                                     Dim tcs As TaskCompletionSource(Of String) = Nothing
                                     If _pendingRequests.TryRemove(reqId, tcs) Then
                                         tcs.SetResult(msg)
@@ -106,7 +123,14 @@ Public Class NetworkClient
                 End If
             End While
         Catch ex As Exception
-            ' Connection lost
+            ' Connection dropped or was closed
+        Finally
+            If Not _suppressConnectionLost Then
+                Try
+                    RaiseEvent ConnectionLost()
+                Catch
+                End Try
+            End If
         End Try
     End Sub
 End Class

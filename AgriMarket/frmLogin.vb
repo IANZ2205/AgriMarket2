@@ -28,21 +28,34 @@
         If parts(0) = "OK" Then
             Dim userId As Integer = Convert.ToInt32(parts(2))
             Dim role As String = parts(3)
-            If role = "Admin" Then
-                MessageBox.Show("Administrators must log in directly on the Server application.", "Access Denied", MessageBoxButtons.OK, MessageBoxIcon.Stop)
-                Exit Sub
-            End If
             Dim name As String = parts(4)
             Dim status As String = parts(5)
+            Dim mustChange As Boolean = If(parts.Length > 6, parts(6) = "1", False)
 
-            ' Check if a trader is pending approval
             If status = "Pending" Then
                 MessageBox.Show("Your trader account is awaiting administrator approval.", "Account Pending", MessageBoxButtons.OK, MessageBoxIcon.Information)
                 Exit Sub
             End If
 
-            Dim dashboard As New frmDashboard(userId, name, role)
-            dashboard.Show()
+            ' If password was reset by admin, force the user to set a new one first
+            If mustChange Then
+                Dim forceForm As New frmForcePasswordChange(userId)
+                Dim result As DialogResult = forceForm.ShowDialog()
+
+                If result = DialogResult.OK Then
+                    Dim dashboard As New frmDashboard(userId, name, role)
+                    dashboard.Show()
+                    Me.Hide()
+                Else
+                    MessageBox.Show("You must set a new password to continue. Please try logging in again.", "Password Change Required", MessageBoxButtons.OK, MessageBoxIcon.Information)
+                    txtPassword.Clear()
+                    txtPassword.Focus()
+                End If
+                Exit Sub
+            End If
+
+            Dim dashboard2 As New frmDashboard(userId, name, role)
+            dashboard2.Show()
             Me.Hide()
         Else
             MessageBox.Show(parts(3), "Login Failed", MessageBoxButtons.OK, MessageBoxIcon.Error)
@@ -50,6 +63,7 @@
             txtPassword.Focus()
         End If
     End Sub
+
     Private Sub lnkSignUp_LinkClicked(sender As Object, e As LinkLabelLinkClickedEventArgs) Handles lnkSignUp.LinkClicked
         Dim registerForm As New frmRegister()
         registerForm.Show()

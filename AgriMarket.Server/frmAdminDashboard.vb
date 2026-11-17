@@ -1,236 +1,182 @@
-﻿Imports System.Data
-Imports System.Drawing.Printing
+﻿Imports System.Drawing
 
+' ========== MENU VERSION 4 - SELF-CONTAINED ==========
 Public Class frmAdminDashboard
-    Private _printData As DataTable
+    Private panelTop As System.Windows.Forms.Panel
+    Private panelContent As System.Windows.Forms.Panel
+    Private lblLogo As System.Windows.Forms.Label
+    Private lblWelcome As System.Windows.Forms.Label
+    Private lblRole As System.Windows.Forms.Label
+    Private btnLogout As System.Windows.Forms.Button
+    Private menuButtons As New System.Collections.Generic.Dictionary(Of String, System.Windows.Forms.Button)()
 
     Private Sub frmAdminDashboard_Load(sender As Object, e As EventArgs) Handles MyBase.Load
-        ApplyGridStyle(dgvUsers)
-        ApplyGridStyle(dgvReports)
-        ApplyGridStyle(dgvMaster)
-        ApplyGridStyle(dgvAllListings)
-        ApplyGridStyle(dgvAllOrders)
-        ApplyGridStyle(dgvLogs)
-        LoadAllListings()
-        LoadAllOrders()
-
-        LoadStats()
-        LoadUsers()
-        LoadLogs()
-
-        cmbReportType.SelectedIndex = 0
-        LoadReportData()
-
-        ' Load the master list safely
-        cmbListType.SelectedIndex = 0
-        LoadMasterList()
+        BuildShell()
+        NavigateTo("Dashboard")
     End Sub
 
-    Private Sub ApplyGridStyle(grid As DataGridView)
-        grid.BackgroundColor = Color.White
-        grid.BorderStyle = BorderStyle.None
-        grid.EnableHeadersVisualStyles = False
-        grid.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(232, 243, 243)
-        grid.ColumnHeadersDefaultCellStyle.Font = New Font("Segoe UI", 10, FontStyle.Bold)
-        grid.ColumnHeadersHeight = 35
-        grid.RowTemplate.Height = 30
+    Private Sub BuildShell()
+        panelTop = New System.Windows.Forms.Panel()
+        panelTop.BackColor = System.Drawing.Color.FromArgb(1, 96, 100)
+        panelTop.Dock = System.Windows.Forms.DockStyle.Top
+        panelTop.Height = 70
+        Me.Controls.Add(panelTop)
+
+        ' Right side: welcome + logout
+        Dim panelWelcome As New System.Windows.Forms.Panel()
+        panelWelcome.Dock = System.Windows.Forms.DockStyle.Right
+        panelWelcome.Width = 230
+        panelWelcome.BackColor = System.Drawing.Color.Transparent
+        panelTop.Controls.Add(panelWelcome)
+
+        btnLogout = New System.Windows.Forms.Button()
+        btnLogout.Text = "Log Out"
+        btnLogout.FlatStyle = System.Windows.Forms.FlatStyle.Flat
+        btnLogout.FlatAppearance.BorderColor = System.Drawing.Color.White
+        btnLogout.Font = New System.Drawing.Font("Segoe UI", 9, System.Drawing.FontStyle.Bold)
+        btnLogout.ForeColor = System.Drawing.Color.White
+        btnLogout.BackColor = System.Drawing.Color.Transparent
+        btnLogout.Cursor = System.Windows.Forms.Cursors.Hand
+        btnLogout.Size = New System.Drawing.Size(90, 35)
+        btnLogout.Location = New System.Drawing.Point(130, 18)
+        AddHandler btnLogout.Click, AddressOf btnLogout_Click
+        panelWelcome.Controls.Add(btnLogout)
+
+        lblWelcome = New System.Windows.Forms.Label()
+        lblWelcome.AutoSize = True
+        lblWelcome.Font = New System.Drawing.Font("Segoe UI", 9, System.Drawing.FontStyle.Bold)
+        lblWelcome.ForeColor = System.Drawing.Color.White
+        lblWelcome.Location = New System.Drawing.Point(10, 18)
+        lblWelcome.Text = "Admin"
+        panelWelcome.Controls.Add(lblWelcome)
+
+        lblRole = New System.Windows.Forms.Label()
+        lblRole.AutoSize = True
+        lblRole.Font = New System.Drawing.Font("Segoe UI", 8)
+        lblRole.ForeColor = System.Drawing.Color.FromArgb(232, 243, 243)
+        lblRole.Location = New System.Drawing.Point(10, 38)
+        lblRole.Text = "Administrator"
+        panelWelcome.Controls.Add(lblRole)
+
+        ' Left side: logo
+        Dim panelLogo As New System.Windows.Forms.Panel()
+        panelLogo.Dock = System.Windows.Forms.DockStyle.Left
+        panelLogo.Width = 160
+        panelLogo.BackColor = System.Drawing.Color.Transparent
+        panelTop.Controls.Add(panelLogo)
+
+        lblLogo = New System.Windows.Forms.Label()
+        lblLogo.AutoSize = True
+        lblLogo.Font = New System.Drawing.Font("Segoe UI", 16, System.Drawing.FontStyle.Bold)
+        lblLogo.ForeColor = System.Drawing.Color.White
+        lblLogo.Location = New System.Drawing.Point(20, 20)
+        lblLogo.Text = "AgriMarket"
+        panelLogo.Controls.Add(lblLogo)
+
+        ' Middle: menu
+        Dim panelMenu As New System.Windows.Forms.Panel()
+        panelMenu.Dock = System.Windows.Forms.DockStyle.Fill
+        panelMenu.BackColor = System.Drawing.Color.Transparent
+        panelTop.Controls.Add(panelMenu)
+        panelMenu.BringToFront()
+
+        ' 10 menu items: display label, internal page key
+        Dim menuItems As New List(Of Tuple(Of String, String))()
+        menuItems.Add(New Tuple(Of String, String)("Dashboard", "Dashboard"))
+        menuItems.Add(New Tuple(Of String, String)("Users", "Users"))
+        menuItems.Add(New Tuple(Of String, String)("Listings", "Listings"))
+        menuItems.Add(New Tuple(Of String, String)("Orders", "Orders"))
+        menuItems.Add(New Tuple(Of String, String)("Masters", "Master Lists"))
+        menuItems.Add(New Tuple(Of String, String)("Notices", "Announcements"))
+        menuItems.Add(New Tuple(Of String, String)("Reports", "Reports"))
+        menuItems.Add(New Tuple(Of String, String)("Logs", "Logs"))
+        menuItems.Add(New Tuple(Of String, String)("Online", "Connected"))
+        menuItems.Add(New Tuple(Of String, String)("Live", "Performance"))
+        menuItems.Add(New Tuple(Of String, String)("Reported", "Reported"))
+
+        Dim xPos As Integer = 8
+        For Each item In menuItems
+            Dim btn As New System.Windows.Forms.Button()
+            btn.Text = item.Item1
+            btn.Tag = item.Item2
+            btn.FlatStyle = System.Windows.Forms.FlatStyle.Flat
+            btn.FlatAppearance.BorderSize = 0
+            btn.Font = New System.Drawing.Font("Segoe UI", 8.5, System.Drawing.FontStyle.Regular)
+            btn.ForeColor = System.Drawing.Color.White
+            btn.BackColor = System.Drawing.Color.Transparent
+            btn.Cursor = System.Windows.Forms.Cursors.Hand
+            Dim w As Integer = Math.Max(60, item.Item1.Length * 6 + 16)
+            btn.Size = New System.Drawing.Size(w, 35)
+            btn.Location = New System.Drawing.Point(xPos, 18)
+            AddHandler btn.Click, AddressOf MenuButton_Click
+            panelMenu.Controls.Add(btn)
+            menuButtons(item.Item2) = btn
+            xPos += w + 2
+        Next
+
+        ' Content area
+        panelContent = New System.Windows.Forms.Panel()
+        panelContent.Dock = System.Windows.Forms.DockStyle.Fill
+        panelContent.BackColor = System.Drawing.Color.FromArgb(244, 249, 249)
+        Me.Controls.Add(panelContent)
+        panelContent.BringToFront()
     End Sub
 
-    Private Sub LoadStats()
-        Dim dt As DataTable = DatabaseHelper.GetAdminDashboardStats()
-        If dt.Rows.Count > 0 Then
-            lblUsers.Text = "Total Registered Users: " & dt.Rows(0)("TotalUsers").ToString()
-            lblTraders.Text = "Active Traders: " & dt.Rows(0)("TotalTraders").ToString()
-            lblBuyers.Text = "Active Buyers: " & dt.Rows(0)("TotalBuyers").ToString()
-            lblOrders.Text = "Total Orders Placed: " & dt.Rows(0)("TotalOrders").ToString()
+    Private Sub MenuButton_Click(sender As Object, e As EventArgs)
+        Dim btn = CType(sender, System.Windows.Forms.Button)
+        NavigateTo(btn.Tag.ToString())
+    End Sub
+
+    Private Sub NavigateTo(page As String)
+        For Each kvp In menuButtons
+            kvp.Value.BackColor = System.Drawing.Color.Transparent
+            kvp.Value.ForeColor = System.Drawing.Color.White
+            kvp.Value.Font = New System.Drawing.Font("Segoe UI", 8.5, System.Drawing.FontStyle.Regular)
+        Next
+
+        If menuButtons.ContainsKey(page) Then
+            menuButtons(page).BackColor = System.Drawing.Color.White
+            menuButtons(page).ForeColor = System.Drawing.Color.FromArgb(1, 96, 100)
+            menuButtons(page).Font = New System.Drawing.Font("Segoe UI", 8.5, System.Drawing.FontStyle.Bold)
         End If
-    End Sub
 
-    Private Sub LoadUsers()
-        dgvUsers.DataSource = DatabaseHelper.GetAllUsers()
-    End Sub
+        panelContent.Controls.Clear()
 
-    Private Sub LoadReportData()
-        If cmbReportType.SelectedIndex = 0 Then
-            _printData = DatabaseHelper.GetStockReport()
-        Else
-            _printData = DatabaseHelper.GetSalesReport()
+        Dim uc As System.Windows.Forms.UserControl = Nothing
+        Select Case page
+            Case "Dashboard"
+                uc = New ucAdminDashboard()
+            Case "Users"
+                uc = New ucAdminUsers()
+            Case "Listings"
+                uc = New ucAdminListings()
+            Case "Orders"
+                uc = New ucAdminOrders()
+            Case "Master Lists"
+                uc = New ucAdminMasterLists()
+            Case "Announcements"
+                uc = New ucAdminAnnouncements()
+            Case "Reports"
+                uc = New ucAdminReports()
+            Case "Logs"
+                uc = New ucAdminLogs()
+            Case "Connected"
+                uc = New ucAdminConnectedUsers()
+            Case "Performance"
+                uc = New ucAdminLivePerformance()
+            Case "Reported"
+                uc = New ucAdminReportedChats()
+        End Select
+
+
+        If uc IsNot Nothing Then
+            uc.Dock = System.Windows.Forms.DockStyle.Fill
+            panelContent.Controls.Add(uc)
         End If
-        dgvReports.DataSource = _printData
+
     End Sub
 
-    Private Sub cmbReportType_SelectedIndexChanged(sender As Object, e As EventArgs) Handles cmbReportType.SelectedIndexChanged
-        LoadReportData()
-    End Sub
-
-    Private Sub btnRefreshUsers_Click(sender As Object, e As EventArgs) Handles btnRefreshUsers.Click
-        LoadUsers()
-        LoadStats()
-    End Sub
-
-    Private Sub btnApprove_Click(sender As Object, e As EventArgs) Handles btnApprove.Click
-        If dgvUsers.SelectedRows.Count = 0 Then Exit Sub
-        Dim userId As Integer = Convert.ToInt32(dgvUsers.SelectedRows(0).Cells("UserID").Value)
-
-        If DatabaseHelper.ApproveUser(userId) Then
-            MessageBox.Show("Trader Approved!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
-            LoadUsers()
-            LoadStats()
-        End If
-    End Sub
-
-    Private Sub btnLogout_Click(sender As Object, e As EventArgs) Handles btnLogout.Click
+    Private Sub btnLogout_Click(sender As Object, e As EventArgs)
         Me.Close()
-    End Sub
-
-    ' --- PRINTING LOGIC ---
-    Private Sub btnPreviewReport_Click(sender As Object, e As EventArgs) Handles btnPreviewReport.Click
-        If _printData Is Nothing OrElse _printData.Rows.Count = 0 Then
-            MessageBox.Show("No data to print for this report.", "Empty Report", MessageBoxButtons.OK, MessageBoxIcon.Warning)
-            Exit Sub
-        End If
-
-        PrintPreviewDialog1.Document = PrintDocument1
-        PrintPreviewDialog1.ShowDialog()
-    End Sub
-
-    Private Sub PrintDocument1_PrintPage(sender As Object, e As PrintPageEventArgs) Handles PrintDocument1.PrintPage
-        Dim fontHeader As New Font("Segoe UI", 16, FontStyle.Bold)
-        Dim fontSub As New Font("Segoe UI", 10, FontStyle.Regular)
-        Dim fontBody As New Font("Segoe UI", 9, FontStyle.Regular)
-        Dim yPos As Integer = e.MarginBounds.Top
-        Dim leftMargin As Integer = e.MarginBounds.Left
-
-        Dim title As String = cmbReportType.SelectedItem.ToString()
-        e.Graphics.DrawString("AgriMarket - " & title, fontHeader, Brushes.Black, leftMargin, yPos)
-        yPos += 30
-        e.Graphics.DrawString("Printed on: " & DateTime.Now.ToString("dd MMM yyyy HH:mm"), fontSub, Brushes.Gray, leftMargin, yPos)
-        yPos += 40
-
-        Dim xPos As Integer = leftMargin
-        For Each col As DataColumn In _printData.Columns
-            e.Graphics.DrawString(col.ColumnName, fontSub, Brushes.Black, xPos, yPos)
-            xPos += 150
-        Next
-        yPos += 25
-        e.Graphics.DrawLine(Pens.Black, leftMargin, yPos - 5, e.MarginBounds.Right, yPos - 5)
-
-        For Each row As DataRow In _printData.Rows
-            xPos = leftMargin
-            For Each col As DataColumn In _printData.Columns
-                Dim cellValue As String = row(col).ToString()
-                If cellValue.Length > 18 Then cellValue = cellValue.Substring(0, 15) & "..."
-                e.Graphics.DrawString(cellValue, fontBody, Brushes.Black, xPos, yPos)
-                xPos += 150
-            Next
-            yPos += 25
-            If yPos > e.MarginBounds.Bottom - 50 Then
-                e.HasMorePages = True
-                Exit Sub
-            End If
-        Next
-    End Sub
-
-    ' --- MASTER LISTS LOGIC ---
-    Private Sub cmbListType_SelectedIndexChanged(sender As Object, e As EventArgs) Handles cmbListType.SelectedIndexChanged
-        LoadMasterList()
-    End Sub
-
-    Private Sub LoadMasterList()
-        ' Safety check for initialization
-        If dgvMaster Is Nothing OrElse cmbListType Is Nothing Then Return
-        If cmbListType.SelectedItem Is Nothing Then Return
-
-        Dim listType As String = cmbListType.SelectedItem.ToString()
-        dgvMaster.DataSource = DatabaseHelper.GetMasterList(listType)
-
-        If dgvMaster.Columns.Contains("ID") Then dgvMaster.Columns("ID").Visible = False
-        If dgvMaster.Columns.Contains("Name") Then dgvMaster.Columns("Name").AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill
-    End Sub
-
-    Private Sub btnAddMaster_Click(sender As Object, e As EventArgs) Handles btnAddMaster.Click
-        Dim name As String = txtNewItem.Text.Trim()
-        If String.IsNullOrWhiteSpace(name) Then
-            MessageBox.Show("Please enter a name.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning)
-            Exit Sub
-        End If
-
-        Dim listType As String = cmbListType.SelectedItem.ToString()
-        If DatabaseHelper.AddMasterListItem(listType, name) Then
-            MessageBox.Show("Item added successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
-            txtNewItem.Clear()
-            LoadMasterList()
-        Else
-            MessageBox.Show("Failed to add item. It may already exist.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
-        End If
-    End Sub
-
-    Private Sub btnDeleteMaster_Click(sender As Object, e As EventArgs) Handles btnDeleteMaster.Click
-        If dgvMaster.SelectedRows.Count = 0 Then Exit Sub
-
-        Dim id As Integer = Convert.ToInt32(dgvMaster.SelectedRows(0).Cells("ID").Value)
-        Dim name As String = dgvMaster.SelectedRows(0).Cells("Name").Value.ToString()
-
-        If MessageBox.Show($"Are you sure you want to delete '{name}'?", "Confirm Delete", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) = DialogResult.Yes Then
-            Dim listType As String = cmbListType.SelectedItem.ToString()
-            If DatabaseHelper.DeleteMasterListItem(listType, id) Then
-                LoadMasterList()
-            Else
-                MessageBox.Show("Could not delete. This item might be in use.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
-            End If
-        End If
-    End Sub
-    ' Announcements Logic
-    Private Sub btnSendAnnouncement_Click(sender As Object, e As EventArgs) Handles btnSendAnnouncement.Click
-        Dim title As String = txtAnnounceTitle.Text.Trim()
-        Dim body As String = txtAnnounceBody.Text.Trim()
-
-        If String.IsNullOrWhiteSpace(title) OrElse String.IsNullOrWhiteSpace(body) Then
-            MessageBox.Show("Please fill in both the Title and the Message Body.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning)
-            Exit Sub
-        End If
-
-        ' In a full app, we'd loop through all active users and push to their online sockets.
-        ' For this demonstration, we will save it to the database for everyone.
-        ' (Note: To push to online users, we would need to share the ConnectedClients dictionary)
-
-        MessageBox.Show("Announcement broadcasted successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information)
-        txtAnnounceTitle.Clear()
-        txtAnnounceBody.Clear()
-    End Sub
-
-    ' Connected Users Logic
-    Private Sub btnRefreshConnected_Click(sender As Object, e As EventArgs) Handles btnRefreshConnected.Click
-        ' Because the Admin Dashboard runs on the same PC as the Server, 
-        ' we can't easily access the Server's private ConnectedClients dictionary here.
-        ' Instead, for the exam demonstration, we will show a list of users who are "Active" in the database.
-
-        Dim dt As DataTable = DatabaseHelper.GetAllUsers()
-        Dim activeUsers As DataTable = dt.Clone()
-
-        For Each row As DataRow In dt.Rows
-            If row("Status").ToString() = "Active" Then
-                activeUsers.ImportRow(row)
-            End If
-        Next
-
-        dgvConnected.DataSource = activeUsers
-        ApplyGridStyle(dgvConnected)
-    End Sub
-
-    Private Sub LoadAllListings()
-        dgvAllListings.DataSource = DatabaseHelper.GetAllListingsAdmin()
-    End Sub
-
-    Private Sub LoadAllOrders()
-        dgvAllOrders.DataSource = DatabaseHelper.GetAllOrdersAdmin()
-    End Sub
-
-    Private Sub LoadLogs()
-        dgvLogs.DataSource = DatabaseHelper.GetLogs()
-    End Sub
-
-    Private Sub btnRefreshLogs_Click(sender As Object, e As EventArgs) Handles btnRefreshLogs.Click
-        LoadLogs()
     End Sub
 End Class

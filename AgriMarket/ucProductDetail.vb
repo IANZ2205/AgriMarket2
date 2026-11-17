@@ -10,6 +10,7 @@ Public Class ucProductDetail
     Public Event BackClicked()
     Public Event PlaceOrderClicked(itemId As Integer, traderId As Integer, price As Decimal, qty As Integer)
     Public Event ChatClicked(traderId As Integer)
+    Public Event ViewTraderClicked(traderId As Integer)
 
     Public Sub LoadItem(id As Integer, buyerId As Integer)
         _itemId = id
@@ -18,43 +19,53 @@ Public Class ucProductDetail
     End Sub
 
     Private Async Sub _LoadData()
-        Dim response As String = Await NetworkClient.SendRequestAsync($"GET_ITEM_DETAIL|{_itemId}")
-        Dim parts As String() = response.Split("|"c)
+        Try
+            Dim response As String = Await NetworkClient.SendRequestAsync($"GET_ITEM_DETAIL|{_itemId}")
+            Dim parts As String() = response.Split("|"c)
 
-        If parts(0) = "OK" Then
-            Dim f As String() = parts(2).Split("~"c)
-            ' Format: ItemID~Produce~Category~Price~Qty~Expiry~Description~TraderID~TraderName~TraderPhone~TraderDistrict~ImagePath
+            If parts(0) = "OK" AndAlso parts.Length > 2 Then
+                Dim f As String() = parts(2).Split("~"c)
 
-            _traderId = Convert.ToInt32(f(7))
-            _price = Convert.ToDecimal(f(3))
-            _availableQty = Convert.ToInt32(f(4))
+                _traderId = Convert.ToInt32(f(7))
+                _price = Convert.ToDecimal(f(3))
+                _availableQty = Convert.ToInt32(f(4))
 
-            lblName.Text = f(1)
-            lblCategory.Text = f(2)
-            lblPrice.Text = "UGX " & _price.ToString("N0")
-            lblQty.Text = _availableQty.ToString() & " available"
-            lblDesc.Text = If(String.IsNullOrEmpty(f(6)), "No description provided.", f(6))
+                lblName.Text = f(1)
+                lblCategory.Text = f(2)
+                lblPrice.Text = "UGX " & _price.ToString("N0")
+                lblQty.Text = _availableQty.ToString() & " available"
+                lblDesc.Text = If(String.IsNullOrEmpty(f(6)), "No description provided.", f(6))
 
-            lblTraderName.Text = "Name: " & f(8)
-            lblTraderPhone.Text = "Phone: " & f(9)
-            lblTraderDistrict.Text = "District: " & f(10)
+                lblTraderName.Text = "Name: " & f(8)
+                lblTraderPhone.Text = "Phone: " & If(String.IsNullOrEmpty(f(9)), "(not provided)", f(9))
+                lblTraderDistrict.Text = "District: " & If(String.IsNullOrEmpty(f(10)), "(not provided)", f(10))
 
-            ' Load Image (Simplified: Assumes image is in Server's folder, not client)
-            ' In a fully networked app, we'd download this via FILE_GET
-            Try
-                Dim imgPath As String = f(11)
+                Dim imgPath As String = If(f.Length > 11, f(11), "")
                 If Not String.IsNullOrEmpty(imgPath) Then
-                    Dim fullPath As String = Path.Combine(Application.StartupPath, "Files", "products", imgPath)
-                    ' Note: The client won't have the server's images unless they are copied. 
-                    ' For this demo, if the file isn't found, we just leave it blank.
-                    If File.Exists(fullPath) Then
-                        picImage.Image = Image.FromFile(fullPath)
-                    End If
+                    Await LoadImageAsync(imgPath)
                 End If
-            Catch
-            End Try
-        End If
+            End If
+        Catch ex As Exception
+            MessageBox.Show("Could not load product: " & ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        End Try
     End Sub
+
+    Private Async Function LoadImageAsync(imgPath As String) As Task
+        Try
+            Dim resp As String = Await NetworkClient.SendRequestAsync($"GET_FILE|products|{imgPath}")
+            Dim parts As String() = resp.Split("|"c)
+            If parts(0) = "OK" AndAlso parts.Length > 2 Then
+                Dim bytes As Byte() = Convert.FromBase64String(parts(2))
+                Using ms As New MemoryStream(bytes)
+                    Using tmpImg As Image = Image.FromStream(ms)
+                        If picImage.IsDisposed Then Return
+                        picImage.Image = New Bitmap(tmpImg)
+                    End Using
+                End Using
+            End If
+        Catch
+        End Try
+    End Function
 
     Private Sub btnBack_Click(sender As Object, e As EventArgs) Handles btnBack.Click
         RaiseEvent BackClicked()
@@ -67,8 +78,6 @@ Public Class ucProductDetail
     Private Sub btnChat_Click(sender As Object, e As EventArgs) Handles btnChat.Click
         RaiseEvent ChatClicked(_traderId)
     End Sub
-
-    Public Event ViewTraderClicked(traderId As Integer)
 
     Private Sub btnViewTrader_Click(sender As Object, e As EventArgs) Handles btnViewTrader.Click
         RaiseEvent ViewTraderClicked(_traderId)
