@@ -15,9 +15,9 @@ Partial Public Class ucTraderOrders
         End Set
     End Property
 
-    Private Sub ucTraderOrders_Load(sender As Object, e As EventArgs) Handles MyBase.Load
+    Private Async Sub ucTraderOrders_Load(sender As Object, e As EventArgs) Handles MyBase.Load
         ApplyGridStyle()
-        If _traderId > 0 Then LoadOrders()
+        If _traderId > 0 Then Await LoadOrders()
     End Sub
 
     Private Sub ApplyGridStyle()

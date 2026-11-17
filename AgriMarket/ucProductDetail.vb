@@ -21,12 +21,21 @@ Public Class ucProductDetail
     Private Async Sub _LoadData()
         Try
             Dim response As String = Await NetworkClient.SendRequestAsync($"GET_ITEM_DETAIL|{_itemId}")
+
+            If Me.IsDisposed OrElse Me.Disposing Then Return
+
             Dim parts As String() = response.Split("|"c)
 
             If parts(0) = "OK" AndAlso parts.Length > 2 Then
                 Dim f As String() = parts(2).Split("~"c)
 
-                _traderId = Convert.ToInt32(f(7))
+                ' Safely parse the TraderID
+                If f.Length > 7 AndAlso Integer.TryParse(f(7), _traderId) Then
+                    ' _traderId is now correctly set
+                Else
+                    _traderId = 0
+                End If
+
                 _price = Convert.ToDecimal(f(3))
                 _availableQty = Convert.ToInt32(f(4))
 
@@ -46,19 +55,23 @@ Public Class ucProductDetail
                 End If
             End If
         Catch ex As Exception
-            MessageBox.Show("Could not load product: " & ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+            If Not Me.IsDisposed AndAlso Not Me.Disposing Then
+                MessageBox.Show("Could not load product: " & ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+            End If
         End Try
     End Sub
-
     Private Async Function LoadImageAsync(imgPath As String) As Task
         Try
             Dim resp As String = Await NetworkClient.SendRequestAsync($"GET_FILE|products|{imgPath}")
+
+            If Me.IsDisposed OrElse Me.Disposing Then Return
+
             Dim parts As String() = resp.Split("|"c)
             If parts(0) = "OK" AndAlso parts.Length > 2 Then
                 Dim bytes As Byte() = Convert.FromBase64String(parts(2))
                 Using ms As New MemoryStream(bytes)
                     Using tmpImg As Image = Image.FromStream(ms)
-                        If picImage.IsDisposed Then Return
+                        If Me.IsDisposed OrElse Me.Disposing Then Return
                         picImage.Image = New Bitmap(tmpImg)
                     End Using
                 End Using

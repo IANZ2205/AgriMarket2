@@ -22,7 +22,6 @@ Partial Class frmDashboard
         btnNavHome = New Button()
         btnNavStock = New Button()
         btnNavOrders = New Button()
-        btnNavBrowse = New Button()
         btnNavMyOrders = New Button()
         btnNavAdmin = New Button()
         btnNavChats = New Button()
@@ -42,7 +41,6 @@ Partial Class frmDashboard
         panelTop.Controls.Add(btnNavHome)
         panelTop.Controls.Add(btnNavStock)
         panelTop.Controls.Add(btnNavOrders)
-        panelTop.Controls.Add(btnNavBrowse)
         panelTop.Controls.Add(btnNavMyOrders)
         panelTop.Controls.Add(btnNavAdmin)
         panelTop.Controls.Add(btnNavChats)
@@ -76,7 +74,7 @@ Partial Class frmDashboard
         btnNavHome.FlatStyle = FlatStyle.Flat
         btnNavHome.Font = New Font("Segoe UI", 10.0F, FontStyle.Bold)
         btnNavHome.ForeColor = Color.FromArgb(CByte(1), CByte(96), CByte(100))
-        btnNavHome.Location = New Point(180, 18)
+        btnNavHome.Location = New Point(188, 19)
         btnNavHome.Name = "btnNavHome"
         btnNavHome.Size = New Size(90, 35)
         btnNavHome.TabIndex = 1
@@ -91,7 +89,7 @@ Partial Class frmDashboard
         btnNavStock.FlatStyle = FlatStyle.Flat
         btnNavStock.Font = New Font("Segoe UI", 10.0F)
         btnNavStock.ForeColor = Color.White
-        btnNavStock.Location = New Point(280, 18)
+        btnNavStock.Location = New Point(284, 20)
         btnNavStock.Name = "btnNavStock"
         btnNavStock.Size = New Size(100, 35)
         btnNavStock.TabIndex = 2
@@ -106,27 +104,12 @@ Partial Class frmDashboard
         btnNavOrders.FlatStyle = FlatStyle.Flat
         btnNavOrders.Font = New Font("Segoe UI", 10.0F)
         btnNavOrders.ForeColor = Color.White
-        btnNavOrders.Location = New Point(390, 18)
+        btnNavOrders.Location = New Point(388, 20)
         btnNavOrders.Name = "btnNavOrders"
         btnNavOrders.Size = New Size(100, 35)
         btnNavOrders.TabIndex = 3
         btnNavOrders.Text = "Orders"
         btnNavOrders.UseVisualStyleBackColor = False
-        ' 
-        ' btnNavBrowse
-        ' 
-        btnNavBrowse.BackColor = Color.Transparent
-        btnNavBrowse.Cursor = Cursors.Hand
-        btnNavBrowse.FlatAppearance.BorderSize = 0
-        btnNavBrowse.FlatStyle = FlatStyle.Flat
-        btnNavBrowse.Font = New Font("Segoe UI", 10.0F)
-        btnNavBrowse.ForeColor = Color.White
-        btnNavBrowse.Location = New Point(280, 18)
-        btnNavBrowse.Name = "btnNavBrowse"
-        btnNavBrowse.Size = New Size(100, 35)
-        btnNavBrowse.TabIndex = 4
-        btnNavBrowse.Text = "Browse"
-        btnNavBrowse.UseVisualStyleBackColor = False
         ' 
         ' btnNavMyOrders
         ' 
@@ -166,7 +149,7 @@ Partial Class frmDashboard
         btnNavChats.FlatStyle = FlatStyle.Flat
         btnNavChats.Font = New Font("Segoe UI", 10.0F)
         btnNavChats.ForeColor = Color.White
-        btnNavChats.Location = New Point(500, 18)
+        btnNavChats.Location = New Point(494, 20)
         btnNavChats.Name = "btnNavChats"
         btnNavChats.Size = New Size(100, 35)
         btnNavChats.TabIndex = 7
@@ -270,7 +253,6 @@ Partial Class frmDashboard
     Friend WithEvents btnNavHome As System.Windows.Forms.Button
     Friend WithEvents btnNavStock As System.Windows.Forms.Button
     Friend WithEvents btnNavOrders As System.Windows.Forms.Button
-    Friend WithEvents btnNavBrowse As System.Windows.Forms.Button
     Friend WithEvents btnNavMyOrders As System.Windows.Forms.Button
     Friend WithEvents btnNavAdmin As System.Windows.Forms.Button
     Friend WithEvents btnNavChats As System.Windows.Forms.Button

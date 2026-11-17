@@ -1,5 +1,6 @@
-﻿Imports System.Data
-Imports System.ComponentModel
+﻿Imports System.ComponentModel
+Imports System.Data
+Imports System.IO
 
 Public Class ucMyOrders
     Private _buyerId As Integer
@@ -12,8 +13,9 @@ Public Class ucMyOrders
             Return _buyerId
         End Get
         Set(value As Integer)
+            ' We just save the ID. We DO NOT load data here. 
+            ' Loading here causes the freeze because the UI isn't ready yet.
             _buyerId = value
-            LoadOrders()
         End Set
     End Property
 
@@ -24,7 +26,11 @@ Public Class ucMyOrders
         StyleTab(btnTabOngoing, False)
         StyleTab(btnTabCompleted, False)
         StyleTab(btnTabClosed, False)
-        If _buyerId > 0 Then LoadOrders()
+
+        ' NOW we load the data. The screen is fully built.
+        If _buyerId > 0 Then
+            Dim t As Task = LoadOrders()
+        End If
     End Sub
 
     Private Sub ApplyGridStyle()
@@ -68,17 +74,18 @@ Public Class ucMyOrders
     End Sub
 
     Private Function MatchesTab(status As String) As Boolean
+        Dim s As String = status.Trim()
         Select Case _currentTab
             Case "All"
                 Return True
             Case "Pending"
-                Return status = "Pending"
+                Return s.Equals("Pending", StringComparison.OrdinalIgnoreCase)
             Case "Ongoing"
-                Return status = "Confirmed"
+                Return s.Equals("Confirmed", StringComparison.OrdinalIgnoreCase)
             Case "Completed"
-                Return status = "Completed"
+                Return s.Equals("Completed", StringComparison.OrdinalIgnoreCase)
             Case "Closed"
-                Return status = "Rejected" OrElse status = "Cancelled"
+                Return s.Equals("Rejected", StringComparison.OrdinalIgnoreCase) OrElse s.Equals("Cancelled", StringComparison.OrdinalIgnoreCase)
         End Select
         Return False
     End Function
@@ -103,6 +110,7 @@ Public Class ucMyOrders
         End If
 
         dgvMyOrders.DataSource = filtered
+
         If dgvMyOrders.Columns.Contains("OrderID") Then dgvMyOrders.Columns("OrderID").Width = 80
         If dgvMyOrders.Columns.Contains("ItemID") Then dgvMyOrders.Columns("ItemID").Visible = False
         If dgvMyOrders.Columns.Contains("Produce") Then dgvMyOrders.Columns("Produce").AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill
@@ -111,8 +119,6 @@ Public Class ucMyOrders
         If dgvMyOrders.Columns.Contains("Total (UGX)") Then dgvMyOrders.Columns("Total (UGX)").Width = 120
         If dgvMyOrders.Columns.Contains("Status") Then dgvMyOrders.Columns("Status").Width = 110
         If dgvMyOrders.Columns.Contains("Date") Then dgvMyOrders.Columns("Date").Width = 140
-        If dgvMyOrders.Columns.Contains("Needed By") Then dgvMyOrders.Columns("Needed By").Width = 110
-        If dgvMyOrders.Columns.Contains("Delivery") Then dgvMyOrders.Columns("Delivery").Width = 90
 
         UpdateActionButtons()
     End Sub
@@ -146,15 +152,13 @@ Public Class ucMyOrders
                 dt.Columns.Add("Total (UGX)")
                 dt.Columns.Add("Status")
                 dt.Columns.Add("Date")
-                dt.Columns.Add("Needed By")
-                dt.Columns.Add("Delivery")
 
                 If parts.Length > 2 Then
                     For Each r As String In parts(2).Split("^"c)
                         If r.Trim() <> "" Then
                             Dim f As String() = r.Split("~"c)
                             If f.Length >= 8 Then
-                                dt.Rows.Add(f(0), f(1), f(2), f(3), f(4), f(5), f(6), f(7), If(f.Length > 8, f(8), ""), If(f.Length > 9, f(9), "Pickup"))
+                                dt.Rows.Add(f(0), f(1), f(2), f(3), f(4), f(5), f(6), f(7))
                             End If
                         End If
                     Next
@@ -162,6 +166,8 @@ Public Class ucMyOrders
 
                 _allOrders = dt
                 ApplyFilter()
+            Else
+                MessageBox.Show("Server returned an error: " & response, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
             End If
         Catch ex As Exception
             MessageBox.Show("Error loading orders: " & ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error)

@@ -19,19 +19,14 @@
         If _userRole = "Trader" Then
             btnNavStock.Visible = True
             btnNavOrders.Visible = True
-            btnNavBrowse.Visible = False
             btnNavMyOrders.Visible = False
             btnNavAdmin.Visible = False
         ElseIf _userRole = "Admin" Then
             btnNavStock.Visible = False
             btnNavOrders.Visible = False
-            btnNavBrowse.Visible = False
-            btnNavMyOrders.Visible = False
-            btnNavAdmin.Visible = True
         Else
             btnNavStock.Visible = False
             btnNavOrders.Visible = False
-            btnNavBrowse.Visible = True
             btnNavMyOrders.Visible = True
             btnNavAdmin.Visible = False
         End If
@@ -205,17 +200,6 @@
                     ordersView.Dock = DockStyle.Fill
                     panelContent.Controls.Add(ordersView)
 
-                Case "Browse"
-                    btnNavBrowse.BackColor = Color.White
-                    btnNavBrowse.ForeColor = Color.FromArgb(1, 96, 100)
-                    btnNavBrowse.Font = New Font("Segoe UI", 10.0!, FontStyle.Bold)
-
-                    Dim browseView As New ucBrowse()
-                    browseView.BuyerId = _userId
-                    browseView.Dock = DockStyle.Fill
-                    AddHandler browseView.StartChatRequested, AddressOf HandleStartChatRequested
-                    AddHandler browseView.ViewProductClicked, AddressOf HandleViewProduct
-                    panelContent.Controls.Add(browseView)
 
                 Case "MyOrders"
                     btnNavMyOrders.BackColor = Color.White
@@ -400,9 +384,6 @@
         NavigateTo("Orders")
     End Sub
 
-    Private Sub btnNavBrowse_Click(sender As Object, e As EventArgs) Handles btnNavBrowse.Click
-        NavigateTo("Browse")
-    End Sub
 
     Private Sub btnNavMyOrders_Click(sender As Object, e As EventArgs) Handles btnNavMyOrders.Click
         NavigateTo("MyOrders")

@@ -463,7 +463,8 @@ Public Class frmServerMain
                     Dim dt As DataTable = DatabaseHelper.GetBuyerOrders(Convert.ToInt32(parts(2)))
                     Dim sb As New StringBuilder()
                     For Each row As DataRow In dt.Rows
-                        sb.Append($"{row("OrderID")}~{row("Produce")}~{row("Trader")}~{row("Qty")}~{row("Total (UGX)")}~{row("Status")}~{row("Date")}^")
+                        ' Since we forced the column name in SQL, we can just use "Produce" here.
+                        sb.Append($"{row("OrderID")}~{row("ItemID")}~{row("Produce")}~{row("Trader")}~{row("Qty")}~{row("Total (UGX)")}~{row("Status")}~{row("Date")}^")
                     Next
                     SendResponse(client, $"OK|{reqId}|{sb.ToString()}" & ControlChars.CrLf)
 
@@ -527,6 +528,11 @@ Public Class frmServerMain
                     Dim convId As Integer = Convert.ToInt32(parts(2))
                     Dim senderId As Integer = Convert.ToInt32(parts(3))
                     Dim receiverId As Integer = Convert.ToInt32(parts(4))
+                    ' Check if either user has blocked the other
+                    If DatabaseHelper.IsBlockedByEither(senderId, receiverId) Then
+                        SendResponse(client, $"ERR|{reqId}|BLOCKED|You cannot send messages to this user." & ControlChars.CrLf)
+                        Exit Sub
+                    End If
 
                     Dim success As Boolean = False
                     Dim msgType As String = "Text"
@@ -747,7 +753,48 @@ Public Class frmServerMain
                     Else
                         SendResponse(client, $"ERR|{reqId}|FAILED|Could not update report" & ControlChars.CrLf)
                     End If
+                Case "CHAT_BLOCK"
+                    Dim blockerId As Integer = Convert.ToInt32(parts(2))
+                    Dim blockedId As Integer = Convert.ToInt32(parts(3))
+                    If DatabaseHelper.BlockUser(blockerId, blockedId) Then
+                        DatabaseHelper.WriteLog("Info", "Chat", $"User {blockerId} blocked User {blockedId}.")
+                        SendResponse(client, $"OK|{reqId}|Blocked" & ControlChars.CrLf)
+                    Else
+                        SendResponse(client, $"ERR|{reqId}|FAILED|Could not block user" & ControlChars.CrLf)
+                    End If
 
+                Case "CHAT_UNBLOCK"
+                    Dim blockerId As Integer = Convert.ToInt32(parts(2))
+                    Dim blockedId As Integer = Convert.ToInt32(parts(3))
+                    If DatabaseHelper.UnblockUser(blockerId, blockedId) Then
+                        DatabaseHelper.WriteLog("Info", "Chat", $"User {blockerId} unblocked User {blockedId}.")
+                        SendResponse(client, $"OK|{reqId}|Unblocked" & ControlChars.CrLf)
+                    Else
+                        SendResponse(client, $"ERR|{reqId}|FAILED|Could not unblock user" & ControlChars.CrLf)
+                    End If
+
+                Case "CHAT_REPORT"
+                    Dim convId As Integer = Convert.ToInt32(parts(2))
+                    Dim reportedBy As Integer = Convert.ToInt32(parts(3))
+                    Dim reportedUserId As Integer = Convert.ToInt32(parts(4))
+                    Dim reason As String = parts(5)
+
+                    Dim reportId As Integer = DatabaseHelper.ReportChat(convId, reportedBy, reportedUserId, reason)
+                    If reportId > 0 Then
+                        DatabaseHelper.WriteLog("Warning", "Report", $"User {reportedBy} reported User {reportedUserId} in Conv {convId}. Reason: {reason}")
+                        SendResponse(client, $"OK|{reqId}|Reported" & ControlChars.CrLf)
+                    Else
+                        SendResponse(client, $"ERR|{reqId}|FAILED|Could not submit report" & ControlChars.CrLf)
+                    End If
+
+                Case "GET_REPORTS"
+                    Dim dt As DataTable = DatabaseHelper.GetChatReports()
+                    Dim sb As New StringBuilder()
+                    For Each row As DataRow In dt.Rows
+                        Dim safeReason As String = SanitizeField(row("Reason").ToString())
+                        sb.Append($"{row("ReportID")}~{row("ConvID")}~{SanitizeField(row("ReporterName").ToString())}~{SanitizeField(row("ReportedName").ToString())}~{safeReason}~{row("Status")}~{row("CreatedAt")}^")
+                    Next
+                    SendResponse(client, $"OK|{reqId}|{sb.ToString()}" & ControlChars.CrLf)
 
                 Case Else
                     SendResponse(client, $"ERR|{reqId}|UNKNOWN_COMMAND|Command not recognized" & ControlChars.CrLf)

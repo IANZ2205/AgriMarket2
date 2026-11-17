@@ -47,7 +47,6 @@ Public Class ucChats
     Private Async Sub ucChats_Load(sender As Object, e As EventArgs) Handles MyBase.Load
         ApplyGridStyle()
         SetupAttachMenu()
-        SetupAttachMenu()
         SetupChatMenu()
         AddHandler NetworkClient.ChatMessageReceived, AddressOf HandleIncomingChat
         If _currentUserId > 0 Then Await LoadConversations()
@@ -78,6 +77,7 @@ Public Class ucChats
 
         AddHandler btnAttach.Click, Sub(s, ev) ctxAttach.Show(btnAttach, New Point(0, btnAttach.Height))
     End Sub
+
     Private Sub SetupChatMenu()
         If ctxChatMenu Is Nothing Then Return
         ctxChatMenu.Items.Clear()
@@ -90,6 +90,7 @@ Public Class ucChats
         AddHandler miReport.Click, AddressOf ReportUser_Click
         ctxChatMenu.Items.Add(miReport)
 
+        ' Using your existing btnMore control to show the menu
         AddHandler btnMore.Click, Sub(s, ev) ctxChatMenu.Show(btnMore, New Point(0, btnMore.Height))
     End Sub
 
@@ -591,7 +592,6 @@ Public Class ucChats
         If String.IsNullOrEmpty(s) Then Return ""
         Return s.Replace("|"c, " ").Replace("~"c, " ").Replace("^"c, " ")
     End Function
-
 
     Private Async Sub btnSend_Click(sender As Object, e As EventArgs) Handles btnSend.Click
         If String.IsNullOrWhiteSpace(txtMessage.Text) Or _currentConvId = 0 Then Exit Sub

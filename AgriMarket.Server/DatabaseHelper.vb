@@ -727,6 +727,7 @@ Public Class DatabaseHelper
         Return dt
     End Function
 
+
     Public Shared Function GetAllAvailableStock() As DataTable
         Dim dt As New DataTable()
         Using connection As New SqliteConnection(ConnectionString)
@@ -752,13 +753,13 @@ Public Class DatabaseHelper
     End Function
 
     Public Shared Function SearchStock(searchTerm As String) As DataTable
-        Dim dt As New DataTable()
+        Dim rawDt As New DataTable()
         Using connection As New SqliteConnection(ConnectionString)
             connection.Open()
             Dim query As String = "
                 SELECT i.ItemID, i.EnglishName AS [Produce], i.Category, i.UnitPrice AS [Price (UGX)], 
-                       b.QtyRemaining AS [Available Qty], b.ExpiryDate AS [Expiry Date],
-                       u.DisplayName AS [Trader Name],
+                       b.QtyRemaining, b.QtyReserved, b.ExpiryDate,
+                       u.DisplayName AS [Trader Name], i.TraderID,
                        (SELECT FileName FROM ItemImages WHERE ItemID = i.ItemID AND IsPrimary = 1 LIMIT 1) AS ImagePath,
                        IFNULL(i.Unit, 'kg') AS Unit
                 FROM Items i
@@ -770,11 +771,50 @@ Public Class DatabaseHelper
             Using cmd As New SqliteCommand(query, connection)
                 cmd.Parameters.AddWithValue("@search", "%" & searchTerm & "%")
                 Using reader As SqliteDataReader = cmd.ExecuteReader()
-                    dt.Load(reader)
+                    rawDt.Load(reader)
                 End Using
             End Using
         End Using
-        Return dt
+
+        Dim finalDt As New DataTable()
+        finalDt.Columns.Add("ItemID", GetType(Integer))
+        finalDt.Columns.Add("Produce")
+        finalDt.Columns.Add("Category")
+        finalDt.Columns.Add("Price (UGX)", GetType(Decimal))
+        finalDt.Columns.Add("Available Qty", GetType(Integer))
+        finalDt.Columns.Add("Expiry Date")
+        finalDt.Columns.Add("Trader Name")
+        finalDt.Columns.Add("ImagePath")
+        finalDt.Columns.Add("Unit")
+
+        Dim merged As New Dictionary(Of String, DataRow)()
+
+        For Each row As DataRow In rawDt.Rows
+            Dim key As String = row("Produce").ToString().ToLower() & "|" & row("TraderID").ToString()
+
+            If merged.ContainsKey(key) Then
+                Dim existing As DataRow = merged(key)
+                existing("Available Qty") = Convert.ToInt32(existing("Available Qty")) + Convert.ToInt32(row("QtyRemaining")) - Convert.ToInt32(row("QtyReserved"))
+                If Convert.ToDateTime(row("ExpiryDate")) < Convert.ToDateTime(existing("Expiry Date")) Then
+                    existing("Expiry Date") = row("ExpiryDate")
+                End If
+            Else
+                Dim newRow As DataRow = finalDt.NewRow()
+                newRow("ItemID") = row("ItemID")
+                newRow("Produce") = row("Produce")
+                newRow("Category") = row("Category")
+                newRow("Price (UGX)") = row("Price (UGX)")
+                newRow("Available Qty") = Convert.ToInt32(row("QtyRemaining")) - Convert.ToInt32(row("QtyReserved"))
+                newRow("Expiry Date") = row("ExpiryDate")
+                newRow("Trader Name") = row("Trader Name")
+                newRow("ImagePath") = row("ImagePath")
+                newRow("Unit") = row("Unit")
+                finalDt.Rows.Add(newRow)
+                merged(key) = newRow
+            End If
+        Next
+
+        Return finalDt
     End Function
 
     Public Shared Function GetItemDetailById(itemId As Integer) As DataTable
@@ -1000,7 +1040,22 @@ Public Class DatabaseHelper
         Dim dt As New DataTable()
         Using connection As New SqliteConnection(ConnectionString)
             connection.Open()
-            Dim query As String = "SELECT o.OrderID, i.EnglishName AS [Produce], u.DisplayName AS [Trader], o.Qty, o.TotalAmount AS [Total (UGX)], o.Status, o.CreatedAt AS [Date] FROM Orders o JOIN Items i ON o.ItemID = i.ItemID JOIN Users u ON o.TraderID = u.UserID WHERE o.BuyerID = @buyerId ORDER BY o.CreatedAt DESC"
+
+            ' We use EnglishName here because that is the actual column name in your Items table.
+            Dim query As String = "
+                SELECT o.OrderID, o.ItemID, 
+                       i.EnglishName AS Produce, 
+                       u.DisplayName AS Trader, 
+                       o.Qty, 
+                       o.TotalAmount AS 'Total (UGX)', 
+                       o.Status, 
+                       o.CreatedAt AS Date
+                FROM Orders o
+                LEFT JOIN Items i ON o.ItemID = i.ItemID
+                LEFT JOIN Users u ON o.TraderID = u.UserID
+                WHERE o.BuyerID = @buyerId
+                ORDER BY o.OrderID DESC"
+
             Using cmd As New SqliteCommand(query, connection)
                 cmd.Parameters.AddWithValue("@buyerId", buyerId)
                 Using reader As SqliteDataReader = cmd.ExecuteReader()
@@ -1010,6 +1065,7 @@ Public Class DatabaseHelper
         End Using
         Return dt
     End Function
+
 
     Public Shared Function GetTraderDashboardStats(traderId As Integer) As DataTable
         Dim dt As New DataTable()

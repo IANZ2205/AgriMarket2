@@ -5,8 +5,10 @@
     Public Event ChatClicked(traderId As Integer)
     Public Event ViewProductClicked(itemId As Integer)
 
+
     Public Async Sub LoadTrader(id As Integer)
         _traderId = id
+        flowProducts.Controls.Clear() ' Clear old cards
 
         ' 1. Load Trader Profile
         Dim response As String = Await NetworkClient.SendRequestAsync($"GET_TRADER_DETAILS|{id}")
@@ -16,6 +18,10 @@
             Dim f As String() = parts(2).Split("~"c)
             lblName.Text = f(0)
             lblStats.Text = $"{f(2)} | {f(1)} | {f(3)} completed orders"
+        Else
+            lblName.Text = "Trader Not Found"
+            lblStats.Text = "Could not load details."
+            Return ' Stop if we can't find the trader
         End If
 
         ' 2. Load Their Products
@@ -23,12 +29,15 @@
         Dim pParts As String() = prodResponse.Split("|"c)
 
         If pParts(0) = "OK" AndAlso pParts.Length > 2 Then
+            Dim traderName As String = lblName.Text.Trim().ToLower()
+
             For Each r As String In pParts(2).Split("^"c)
                 If r.Trim() <> "" Then
                     Dim f As String() = r.Split("~"c)
-                    ' Only show products from this specific trader
-                    Dim itemTraderName As String = f(6)
-                    If itemTraderName = lblName.Text Then
+                    Dim itemTraderName As String = f(6).Trim().ToLower()
+
+                    ' Use .ToLower() for safe comparison
+                    If itemTraderName = traderName Then
                         Dim card As New ucProductCard()
                         Dim itemId As Integer = Convert.ToInt32(f(0))
                         card.Setup(itemId, 0, f(1), f(6), Convert.ToDecimal(f(3)), Convert.ToInt32(f(4)), f(5), f(7))
